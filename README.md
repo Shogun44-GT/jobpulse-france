@@ -13,7 +13,7 @@ Un agrégateur rapide d'offres de stage, d'alternance et de premier emploi tech 
 - Jeu de données visuel de démonstration
 - Connecteur OAuth2 France Travail et normalisation des offres
 - Recherches France Travail ciblées stage, alternance et apprentissage dans l'informatique
-- Synchronisation protégée par `CRON_SECRET`, planifiée toutes les 10 minutes
+- Synchronisation protégée par `CRON_SECRET`, planifiée toutes les 10 minutes avec GitHub Actions
 - Recherche réelle, filtres contrat/ville/télétravail et compteur dynamique
 - Test du webhook Slack via `POST /api/slack/test`
 - File d'envoi Slack persistante avec trois tentatives et zéro notification en double
@@ -79,7 +79,7 @@ Deux appels avec le même `source` et `externalId` mettent à jour `last_seen_at
 
 ## Déploiement prévu
 
-La cible est Vercel avec Vercel Postgres et Vercel Cron. Avant un déploiement public, il faudra ajouter l'authentification utilisateur, chiffrer les secrets Slack avec une clé applicative, limiter le débit des routes et ajouter les connecteurs officiels.
+La cible est Vercel Hobby avec Neon Postgres. GitHub Actions appelle la route de synchronisation toutes les 10 minutes, car le cron Vercel Hobby est limité à une exécution quotidienne. Les secrets GitHub `JOBPULSE_CRON_URL` et `JOBPULSE_CRON_SECRET` doivent être configurés après le déploiement.
 
 ## Prochaine étape
 
