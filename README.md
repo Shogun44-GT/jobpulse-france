@@ -12,6 +12,8 @@ Un agrégateur rapide d'offres de stage, d'alternance et de premier emploi tech 
 - Route de lecture `GET /api/jobs`
 - Jeu de données visuel de démonstration
 - Connecteur OAuth2 France Travail et normalisation des offres
+- Connecteur officiel La Bonne Alternance, optionnel tant que sa clé API n'est pas configurée
+- Exclusion des annonces France Travail renvoyées par La Bonne Alternance pour éviter les doubles alertes
 - Recherches France Travail ciblées stage, alternance et apprentissage dans l'informatique
 - Synchronisation protégée par `CRON_SECRET`, planifiée toutes les 10 minutes avec GitHub Actions
 - Recherche réelle, filtres contrat/ville/télétravail et compteur dynamique
@@ -59,6 +61,10 @@ curl http://localhost:3000/api/cron/sync \
 
 Sans PostgreSQL configuré, le dashboard conserve ses cartes de démonstration. Dès que la base et les identifiants France Travail sont actifs, les offres réelles les remplacent.
 
+## Activer La Bonne Alternance
+
+Demande une clé dans l'espace développeur de l'API Apprentissage, puis ajoute-la dans `LA_BONNE_ALTERNANCE_API_KEY`. Le connecteur recherche par défaut les métiers informatiques ROME définis dans `LA_BONNE_ALTERNANCE_ROMES`. Sans clé, cette source est simplement indiquée comme `skipped` dans la réponse du cron et France Travail continue de fonctionner.
+
 ## Tester Slack
 
 Après avoir ajouté `SLACK_WEBHOOK_URL`, redémarre le serveur puis appelle la route de test avec le même `CRON_SECRET` que le cron. Un message « Connexion Slack réussie » doit apparaître dans le canal choisi. Les nouvelles offres correspondant à `SLACK_CONTRACTS` sont ensuite mises en file et envoyées pendant les synchronisations. Les offres déjà présentes avant cette version ne sont volontairement pas envoyées afin d'éviter un afflux initial.
@@ -97,4 +103,4 @@ La cible est Vercel Hobby avec Neon Postgres. GitHub Actions appelle la route de
 
 ## Prochaine étape
 
-Ajouter La Bonne Alternance, puis Greenhouse, Lever, Ashby et SmartRecruiters. Mettre ensuite en place le dédoublonnage flou entre les sources.
+Ajouter Greenhouse, Lever, Ashby et SmartRecruiters. Mettre ensuite en place le dédoublonnage flou entre les sources.
