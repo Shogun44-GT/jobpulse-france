@@ -26,7 +26,7 @@ async function ingestSource(slug: string, fetchJobs: () => Promise<Awaited<Retur
     let inserted = 0;
     for (const job of jobs) {
       const result = await upsertJob(job);
-      if (result.inserted) {
+      if (result.inserted && !result.duplicate) {
         inserted += 1;
         if (shouldNotify(job.contract)) await enqueueSlack(result.id);
         await enqueueUserSlack(result.id);
@@ -53,13 +53,18 @@ export async function GET(request: NextRequest) {
   }
   const startedAt = Date.now();
   try {
-    const sources: SourceResult[] = [];
-    sources.push(await ingestSource("france-travail", fetchFranceTravailJobs));
-    if (isLaBonneAlternanceConfigured()) {
-      sources.push(await ingestSource("la-bonne-alternance", fetchLaBonneAlternanceJobs));
-    } else {
-      sources.push({ source: "la-bonne-alternance", status: "skipped", fetched: 0, inserted: 0 });
-    }
+    const lbaResult = isLaBonneAlternanceConfigured()
+      ? ingestSource("la-bonne-alternance", fetchLaBonneAlternanceJobs)
+      : Promise.resolve({
+          source: "la-bonne-alternance",
+          status: "skipped",
+          fetched: 0,
+          inserted: 0
+        } satisfies SourceResult);
+    const sources = await Promise.all([
+      ingestSource("france-travail", fetchFranceTravailJobs),
+      lbaResult
+    ]);
 
     const slack = await deliverSlackOutbox();
     const userSlack = await deliverUserSlackOutbox();

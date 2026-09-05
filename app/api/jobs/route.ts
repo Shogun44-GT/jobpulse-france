@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     SELECT j.id, j.company, j.title, j.description, j.location, j.contract, j.remote,
       j.apply_url AS "applyUrl", j.published_at AS "publishedAt", s.name AS source
     FROM jobs j JOIN sources s ON s.id = j.source_id
-    WHERE j.active = TRUE
+    WHERE j.active = TRUE AND j.duplicate_of_job_id IS NULL
       AND (${q} = '' OR j.title ILIKE ${pattern} OR j.company ILIKE ${pattern} OR j.description ILIKE ${pattern})
       AND (${contract} = '' OR j.contract = ${contract})
       AND (${location} = '' OR j.location ILIKE ${locationPattern})
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     profile = profileResult.rows[0] ?? null;
   }
   const count = await sql`
-    SELECT COUNT(*)::int AS total FROM jobs j WHERE j.active = TRUE
+    SELECT COUNT(*)::int AS total FROM jobs j WHERE j.active = TRUE AND j.duplicate_of_job_id IS NULL
       AND (${q} = '' OR j.title ILIKE ${pattern} OR j.company ILIKE ${pattern} OR j.description ILIKE ${pattern})
       AND (${contract} = '' OR j.contract = ${contract})
       AND (${location} = '' OR j.location ILIKE ${locationPattern})

@@ -14,6 +14,8 @@ Un agrégateur rapide d'offres de stage, d'alternance et de premier emploi tech 
 - Connecteur OAuth2 France Travail et normalisation des offres
 - Connecteur officiel La Bonne Alternance, optionnel tant que sa clé API n'est pas configurée
 - Exclusion des annonces France Travail renvoyées par La Bonne Alternance pour éviter les doubles alertes
+- Dédoublonnage flou inter-sources par similarité entreprise, titre et localisation
+- Conservation des doublons en base pour l'audit, sans double affichage ni double alerte Slack
 - Recherches France Travail ciblées stage, alternance et apprentissage dans l'informatique
 - Synchronisation protégée par `CRON_SECRET`, planifiée toutes les 10 minutes avec GitHub Actions
 - Recherche réelle, filtres contrat/ville/télétravail et compteur dynamique
@@ -31,7 +33,7 @@ Un agrégateur rapide d'offres de stage, d'alternance et de premier emploi tech 
 - Score de compatibilité réel et explicable basé sur le métier, les compétences, le contrat, la ville et le télétravail
 - Respect du score minimum du profil avant l'envoi d'une alerte Slack individuelle
 
-Le scoring affiché pour les utilisateurs connectés est calculé à partir de leur profil. Les utilisateurs sans profil ne voient aucun pourcentage artificiel. Le dédoublonnage flou et l'ajout de nouvelles sources appartiennent aux phases suivantes.
+Le scoring affiché pour les utilisateurs connectés est calculé à partir de leur profil. Les utilisateurs sans profil ne voient aucun pourcentage artificiel.
 
 ## Lancement local
 
@@ -103,4 +105,4 @@ La cible est Vercel Hobby avec Neon Postgres. GitHub Actions appelle la route de
 
 ## Prochaine étape
 
-Ajouter Greenhouse, Lever, Ashby et SmartRecruiters. Mettre ensuite en place le dédoublonnage flou entre les sources.
+Ajouter Greenhouse, Lever, Ashby et SmartRecruiters.
