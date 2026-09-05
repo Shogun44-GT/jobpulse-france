@@ -4,6 +4,8 @@ import "./phase2.css";
 import "./account.css";
 import "./auth-components.css";
 import "./profile/profile.css";
+import "./applications/applications.css";
+import "./dashboard-actions.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {

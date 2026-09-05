@@ -22,6 +22,8 @@ Un agrégateur rapide d'offres de stage, d'alternance et de premier emploi tech 
 - Création ou mise à jour du compte utilisateur dans PostgreSQL à chaque connexion
 - Pages protégées pour le profil, les candidatures et la future connexion Slack individuelle
 - Profil candidat complet enregistré dans PostgreSQL : métiers, compétences, parcours, villes, contrats, télétravail et score minimal
+- Suivi personnel des candidatures avec statuts, notes, lien vers l'offre et suppression sécurisée
+- Ajout d'une offre depuis le marque-page du dashboard, sans doublon par utilisateur
 
 Le scoring affiché dans l'interface est pour l'instant une démonstration. Le profil fournit désormais les données nécessaires au futur scoring personnalisé. Le dédoublonnage flou et Slack OAuth individuel appartiennent aux phases suivantes.
 
