@@ -11,5 +11,7 @@ export type Job = {
   source: string;
   applyUrl: string;
   score?: number;
+  matchReasons?: string[];
+  profileReady?: boolean;
   logo?: string;
 };

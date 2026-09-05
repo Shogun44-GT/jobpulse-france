@@ -26,8 +26,10 @@ Un agrégateur rapide d'offres de stage, d'alternance et de premier emploi tech 
 - Ajout d'une offre depuis le marque-page du dashboard, sans doublon par utilisateur
 - Connexion Slack OAuth individuelle avec choix du canal pendant l'autorisation
 - Chiffrement AES-256-GCM des webhooks Slack et alertes filtrées par profil utilisateur
+- Score de compatibilité réel et explicable basé sur le métier, les compétences, le contrat, la ville et le télétravail
+- Respect du score minimum du profil avant l'envoi d'une alerte Slack individuelle
 
-Le scoring affiché dans l'interface est pour l'instant une démonstration. Le profil fournit désormais les données nécessaires au futur scoring personnalisé. Le dédoublonnage flou et Slack OAuth individuel appartiennent aux phases suivantes.
+Le scoring affiché pour les utilisateurs connectés est calculé à partir de leur profil. Les utilisateurs sans profil ne voient aucun pourcentage artificiel. Le dédoublonnage flou et l'ajout de nouvelles sources appartiennent aux phases suivantes.
 
 ## Lancement local
 
@@ -95,4 +97,4 @@ La cible est Vercel Hobby avec Neon Postgres. GitHub Actions appelle la route de
 
 ## Prochaine étape
 
-Utiliser le profil candidat pour calculer un score réel par offre, puis activer Slack OAuth pour chaque utilisateur. Ajouter ensuite La Bonne Alternance, Greenhouse, Lever, Ashby et SmartRecruiters.
+Ajouter La Bonne Alternance, puis Greenhouse, Lever, Ashby et SmartRecruiters. Mettre ensuite en place le dédoublonnage flou entre les sources.

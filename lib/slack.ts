@@ -1,5 +1,6 @@
 import { sql } from "./db";
 import { decryptSecret } from "./secret-crypto";
+import { calculateMatch } from "./matching";
 
 type SlackJob = {
   id: string;
@@ -11,6 +12,8 @@ type SlackJob = {
   applyUrl: string;
   source: string;
   publishedAt?: string;
+  score?: number;
+  matchReasons?: string[];
 };
 
 export function slackConfigured() {
@@ -43,6 +46,7 @@ async function postSlack(job: SlackJob, webhook = process.env.SLACK_WEBHOOK_URL)
           { type: "mrkdwn", text: `*Contrat*\n${flags || "Non précisé"}` },
           { type: "mrkdwn", text: `*Source*\n${job.source}` }
         ] },
+        ...(typeof job.score === "number" ? [{ type: "section", text: { type: "mrkdwn", text: `*Compatibilité : ${job.score}%*${job.matchReasons?.length ? `\n${job.matchReasons.join(" • ")}` : ""}` } }] : []),
         { type: "actions", elements: [{ type: "button", text: { type: "plain_text", text: "Postuler maintenant", emoji: true }, style: "primary", url: job.applyUrl }] },
         { type: "context", elements: [{ type: "mrkdwn", text: "Détectée par JobPulse France • Vérifie toujours les informations sur le site source." }] }
       ]
@@ -83,23 +87,28 @@ export async function sendSlackTest() {
 }
 
 export async function enqueueUserSlack(jobId: string) {
-  await sql`
-    INSERT INTO user_notification_outbox (user_id, job_id)
-    SELECT sc.user_id, j.id
+  const candidates = await sql`
+    SELECT sc.user_id, j.id AS job_id, j.title, j.description, j.location, j.contract, j.remote,
+      cp.desired_roles, cp.skills, cp.desired_locations, cp.desired_contracts,
+      cp.remote_preference, cp.minimum_score
     FROM slack_connections sc
     JOIN jobs j ON j.id = ${jobId}
     LEFT JOIN candidate_profiles cp ON cp.user_id = sc.user_id
-    WHERE cp.user_id IS NULL OR (
-      (COALESCE(cardinality(cp.desired_contracts), 0) = 0 OR j.contract = ANY(cp.desired_contracts))
-      AND (cp.remote_preference <> 'remote' OR j.remote = TRUE)
-      AND (
-        COALESCE(cardinality(cp.desired_locations), 0) = 0
-        OR EXISTS (SELECT 1 FROM unnest(cp.desired_locations) place WHERE LOWER(place) IN ('france', 'france entière'))
-        OR EXISTS (SELECT 1 FROM unnest(cp.desired_locations) place WHERE LOWER(j.location) LIKE '%' || LOWER(place) || '%')
-      )
-    )
-    ON CONFLICT (user_id, job_id) DO NOTHING
   `;
+  for (const row of candidates.rows) {
+    if (!row.desired_roles || !row.skills) continue;
+    const match = calculateMatch({ title:row.title as string, description:row.description as string, location:row.location as string, contract:row.contract as string|null, remote:row.remote as boolean }, {
+      desiredRoles:row.desired_roles as string[], skills:row.skills as string[],
+      desiredLocations:row.desired_locations as string[], desiredContracts:row.desired_contracts as string[],
+      remotePreference:row.remote_preference as string, minimumScore:row.minimum_score as number
+    });
+    if (!match.profileReady || match.score < Number(row.minimum_score ?? 60)) continue;
+    await sql`
+      INSERT INTO user_notification_outbox (user_id, job_id, match_score, match_reasons)
+      VALUES (${row.user_id}, ${row.job_id}, ${match.score}, ${match.reasons})
+      ON CONFLICT (user_id, job_id) DO NOTHING
+    `;
+  }
 }
 
 export async function deliverUserSlackOutbox() {
@@ -107,7 +116,7 @@ export async function deliverUserSlackOutbox() {
   const pending = await sql`
     SELECT o.id, sc.webhook_ciphertext, sc.webhook_iv, j.id AS "jobId", j.company,
       j.title, j.location, j.contract, j.remote, j.apply_url AS "applyUrl",
-      j.published_at AS "publishedAt", s.name AS source
+      j.published_at AS "publishedAt", s.name AS source, o.match_score, o.match_reasons
     FROM user_notification_outbox o
     JOIN slack_connections sc ON sc.user_id = o.user_id
     JOIN jobs j ON j.id = o.job_id JOIN sources s ON s.id = j.source_id
@@ -120,7 +129,7 @@ export async function deliverUserSlackOutbox() {
     await sql`UPDATE user_notification_outbox SET status='sending', attempts=attempts+1 WHERE id=${outboxId}`;
     try {
       const webhook = decryptSecret(row.webhook_ciphertext as string, row.webhook_iv as string);
-      await postSlack({ id: row.jobId as string, company: row.company as string, title: row.title as string, location: row.location as string, contract: row.contract as string | undefined, remote: row.remote as boolean, applyUrl: row.applyUrl as string, source: row.source as string, publishedAt: row.publishedAt as string | undefined }, webhook);
+      await postSlack({ id: row.jobId as string, company: row.company as string, title: row.title as string, location: row.location as string, contract: row.contract as string | undefined, remote: row.remote as boolean, applyUrl: row.applyUrl as string, source: row.source as string, publishedAt: row.publishedAt as string | undefined, score: row.match_score as number | undefined, matchReasons: row.match_reasons as string[] | undefined }, webhook);
       await sql`UPDATE user_notification_outbox SET status='sent', delivered_at=NOW(), last_error=NULL WHERE id=${outboxId}`;
       sent += 1;
     } catch (error) {
