@@ -18,6 +18,9 @@ Un agrégateur rapide d'offres de stage, d'alternance et de premier emploi tech 
 - Test du webhook Slack via `POST /api/slack/test`
 - File d'envoi Slack persistante avec trois tentatives et zéro notification en double
 - Alertes Slack limitées aux contrats configurés dans `SLACK_CONTRACTS`
+- Connexion publique Google avec sessions JWT sécurisées
+- Création ou mise à jour du compte utilisateur dans PostgreSQL à chaque connexion
+- Pages protégées pour le profil, les candidatures et la future connexion Slack individuelle
 
 Le scoring affiché dans l'interface est pour l'instant une démonstration. Le scoring personnalisé, le dédoublonnage flou et Slack appartiennent aux phases suivantes.
 
@@ -83,4 +86,4 @@ La cible est Vercel Hobby avec Neon Postgres. GitHub Actions appelle la route de
 
 ## Prochaine étape
 
-Ajouter La Bonne Alternance, puis Greenhouse, Lever, Ashby et SmartRecruiters.
+Compléter le profil candidat et les préférences, puis activer Slack OAuth pour chaque utilisateur. Ajouter ensuite La Bonne Alternance, Greenhouse, Lever, Ashby et SmartRecruiters.

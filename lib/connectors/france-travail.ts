@@ -36,12 +36,7 @@ async function accessToken() {
     body,
     cache: "no-store"
   });
-  if (!response.ok) {
-  const details = (await response.text()).slice(0, 500);
-  throw new Error(
-    `Authentification France Travail: ${response.status} — ${details}`
-  );
-}
+  if (!response.ok) throw new Error(`Authentification France Travail: ${response.status}`);
   const data = await response.json() as { access_token?: string };
   if (!data.access_token) throw new Error("Jeton France Travail absent de la réponse");
   return data.access_token;
