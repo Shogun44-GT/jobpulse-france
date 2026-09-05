@@ -24,6 +24,8 @@ Un agrégateur rapide d'offres de stage, d'alternance et de premier emploi tech 
 - Profil candidat complet enregistré dans PostgreSQL : métiers, compétences, parcours, villes, contrats, télétravail et score minimal
 - Suivi personnel des candidatures avec statuts, notes, lien vers l'offre et suppression sécurisée
 - Ajout d'une offre depuis le marque-page du dashboard, sans doublon par utilisateur
+- Connexion Slack OAuth individuelle avec choix du canal pendant l'autorisation
+- Chiffrement AES-256-GCM des webhooks Slack et alertes filtrées par profil utilisateur
 
 Le scoring affiché dans l'interface est pour l'instant une démonstration. Le profil fournit désormais les données nécessaires au futur scoring personnalisé. Le dédoublonnage flou et Slack OAuth individuel appartiennent aux phases suivantes.
 
@@ -58,6 +60,10 @@ Sans PostgreSQL configuré, le dashboard conserve ses cartes de démonstration. 
 ## Tester Slack
 
 Après avoir ajouté `SLACK_WEBHOOK_URL`, redémarre le serveur puis appelle la route de test avec le même `CRON_SECRET` que le cron. Un message « Connexion Slack réussie » doit apparaître dans le canal choisi. Les nouvelles offres correspondant à `SLACK_CONTRACTS` sont ensuite mises en file et envoyées pendant les synchronisations. Les offres déjà présentes avant cette version ne sont volontairement pas envoyées afin d'éviter un afflux initial.
+
+### Slack individuel
+
+Crée une Slack App, active **Incoming Webhooks** et ajoute l'URL de redirection `https://jobpulse-france.vercel.app/api/slack/callback`. Configure ensuite `APP_URL`, `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET` et une clé hexadécimale de 64 caractères dans `SLACK_TOKEN_ENCRYPTION_KEY`. La connexion demande uniquement le scope `incoming-webhook`, qui laisse l'utilisateur choisir le canal pendant l'autorisation.
 
 ## Tester l'ingestion
 
