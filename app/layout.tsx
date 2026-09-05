@@ -3,6 +3,7 @@ import "./globals.css";
 import "./phase2.css";
 import "./account.css";
 import "./auth-components.css";
+import "./profile/profile.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {

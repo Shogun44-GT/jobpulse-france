@@ -21,8 +21,9 @@ Un agrégateur rapide d'offres de stage, d'alternance et de premier emploi tech 
 - Connexion publique Google avec sessions JWT sécurisées
 - Création ou mise à jour du compte utilisateur dans PostgreSQL à chaque connexion
 - Pages protégées pour le profil, les candidatures et la future connexion Slack individuelle
+- Profil candidat complet enregistré dans PostgreSQL : métiers, compétences, parcours, villes, contrats, télétravail et score minimal
 
-Le scoring affiché dans l'interface est pour l'instant une démonstration. Le scoring personnalisé, le dédoublonnage flou et Slack appartiennent aux phases suivantes.
+Le scoring affiché dans l'interface est pour l'instant une démonstration. Le profil fournit désormais les données nécessaires au futur scoring personnalisé. Le dédoublonnage flou et Slack OAuth individuel appartiennent aux phases suivantes.
 
 ## Lancement local
 
@@ -86,4 +87,4 @@ La cible est Vercel Hobby avec Neon Postgres. GitHub Actions appelle la route de
 
 ## Prochaine étape
 
-Compléter le profil candidat et les préférences, puis activer Slack OAuth pour chaque utilisateur. Ajouter ensuite La Bonne Alternance, Greenhouse, Lever, Ashby et SmartRecruiters.
+Utiliser le profil candidat pour calculer un score réel par offre, puis activer Slack OAuth pour chaque utilisateur. Ajouter ensuite La Bonne Alternance, Greenhouse, Lever, Ashby et SmartRecruiters.
