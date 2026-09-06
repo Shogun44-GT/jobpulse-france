@@ -32,6 +32,30 @@ export async function upsertJob(job: IncomingJob) {
   const sourceResult = await sql`SELECT id FROM sources WHERE slug = ${job.source} AND enabled = TRUE LIMIT 1`;
   const source = sourceResult.rows[0];
   if (!source) throw new Error(`Source inconnue ou désactivée: ${job.source}`);
+  const jobFingerprint = fingerprint(job);
+
+  const existing = await sql`
+    UPDATE jobs SET
+      last_seen_at = NOW(), active = TRUE, title = ${job.title},
+      description = ${job.description}, location = ${job.location},
+      contract = ${job.contract ?? null}, remote = ${job.remote},
+      apply_url = ${job.applyUrl}, published_at = ${job.publishedAt ?? null},
+      deadline_at = ${job.deadlineAt ?? null}, raw = ${JSON.stringify(job)}::jsonb
+    WHERE fingerprint = ${jobFingerprint}
+    RETURNING id, duplicate_of_job_id AS "duplicateOfJobId",
+      deduplication_score AS "deduplicationScore"
+  `;
+  if (existing.rows[0]) {
+    const row = existing.rows[0];
+    return {
+      id: row.id as string,
+      inserted: false,
+      duplicate: Boolean(row.duplicateOfJobId),
+      duplicateOfJobId: row.duplicateOfJobId as string | null,
+      deduplicationScore: row.deduplicationScore === null ? null : Number(row.deduplicationScore)
+    };
+  }
+
   const duplicate = await findDuplicate(job, source.id as string);
 
   const result = await sql`
@@ -40,7 +64,7 @@ export async function upsertJob(job: IncomingJob) {
       contract, remote, apply_url, published_at, deadline_at, raw,
       duplicate_of_job_id, deduplication_score
     ) VALUES (
-      ${source.id}, ${job.externalId}, ${fingerprint(job)}, ${job.company}, ${job.title},
+      ${source.id}, ${job.externalId}, ${jobFingerprint}, ${job.company}, ${job.title},
       ${job.description}, ${job.location}, ${job.contract ?? null}, ${job.remote}, ${job.applyUrl},
       ${job.publishedAt ?? null}, ${job.deadlineAt ?? null}, ${JSON.stringify(job)}::jsonb,
       ${duplicate?.id ?? null}, ${duplicate?.score ?? null}
