@@ -15,6 +15,7 @@ Un agrégateur rapide d'offres de stage, d'alternance et de premier emploi tech 
 - Connecteur officiel La Bonne Alternance, optionnel tant que sa clé API n'est pas configurée
 - Exclusion des annonces France Travail renvoyées par La Bonne Alternance pour éviter les doubles alertes
 - Dédoublonnage flou inter-sources par similarité entreprise, titre et localisation
+- Connecteurs ATS publics Greenhouse, Lever, Ashby et SmartRecruiters, configurables par entreprise
 - Conservation des doublons en base pour l'audit, sans double affichage ni double alerte Slack
 - Recherches France Travail ciblées stage, alternance et apprentissage dans l'informatique
 - Synchronisation protégée par `CRON_SECRET`, planifiée toutes les 10 minutes avec GitHub Actions

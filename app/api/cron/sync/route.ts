@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchFranceTravailJobs } from "@/lib/connectors/france-travail";
 import { fetchLaBonneAlternanceJobs, isLaBonneAlternanceConfigured } from "@/lib/connectors/la-bonne-alternance";
+import { atsConfigured, fetchAshbyJobs, fetchGreenhouseJobs, fetchLeverJobs, fetchSmartRecruitersJobs } from "@/lib/connectors/ats";
 import { upsertJob } from "@/lib/jobs";
 import { sql } from "@/lib/db";
 import { deliverSlackOutbox, deliverUserSlackOutbox, enqueueSlack, enqueueUserSlack, shouldNotify } from "@/lib/slack";
@@ -61,9 +62,17 @@ export async function GET(request: NextRequest) {
           fetched: 0,
           inserted: 0
         } satisfies SourceResult);
+    const ats = [
+      ["greenhouse", fetchGreenhouseJobs], ["lever", fetchLeverJobs],
+      ["ashby", fetchAshbyJobs], ["smartrecruiters", fetchSmartRecruitersJobs]
+    ] as const;
+    const atsResults = ats.map(([slug, fetchJobs]) => atsConfigured(slug)
+      ? ingestSource(slug, fetchJobs)
+      : Promise.resolve({ source: slug, status: "skipped", fetched: 0, inserted: 0 } satisfies SourceResult));
     const sources = await Promise.all([
       ingestSource("france-travail", fetchFranceTravailJobs),
-      lbaResult
+      lbaResult,
+      ...atsResults
     ]);
 
     const slack = await deliverSlackOutbox();
