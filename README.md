@@ -16,6 +16,7 @@ Un agrégateur rapide d'offres de stage, d'alternance et de premier emploi tech 
 - Exclusion des annonces France Travail renvoyées par La Bonne Alternance pour éviter les doubles alertes
 - Dédoublonnage flou inter-sources par similarité entreprise, titre et localisation
 - Connecteurs ATS publics Greenhouse, Lever, Ashby et SmartRecruiters, configurables par entreprise
+- Synchronisations séparées par source afin de respecter la durée maximale des fonctions Vercel
 - Conservation des doublons en base pour l'audit, sans double affichage ni double alerte Slack
 - Recherches France Travail ciblées stage, alternance et apprentissage dans l'informatique
 - Synchronisation protégée par `CRON_SECRET`, planifiée toutes les 10 minutes avec GitHub Actions

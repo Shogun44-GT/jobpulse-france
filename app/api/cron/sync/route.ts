@@ -54,36 +54,32 @@ export async function GET(request: NextRequest) {
   }
   const startedAt = Date.now();
   try {
-    const lbaResult = isLaBonneAlternanceConfigured()
-      ? ingestSource("la-bonne-alternance", fetchLaBonneAlternanceJobs)
-      : Promise.resolve({
-          source: "la-bonne-alternance",
-          status: "skipped",
-          fetched: 0,
-          inserted: 0
-        } satisfies SourceResult);
-    const ats = [
-      ["greenhouse", fetchGreenhouseJobs], ["lever", fetchLeverJobs],
-      ["ashby", fetchAshbyJobs], ["smartrecruiters", fetchSmartRecruitersJobs]
-    ] as const;
-    const atsResults = ats.map(([slug, fetchJobs]) => atsConfigured(slug)
-      ? ingestSource(slug, fetchJobs)
-      : Promise.resolve({ source: slug, status: "skipped", fetched: 0, inserted: 0 } satisfies SourceResult));
-    const sources = await Promise.all([
-      ingestSource("france-travail", fetchFranceTravailJobs),
-      lbaResult,
-      ...atsResults
-    ]);
+    const selected = request.nextUrl.searchParams.get("source") || "france-travail";
+    const connectors = {
+      "france-travail": { configured: true, fetchJobs: fetchFranceTravailJobs },
+      "la-bonne-alternance": { configured: isLaBonneAlternanceConfigured(), fetchJobs: fetchLaBonneAlternanceJobs },
+      greenhouse: { configured: atsConfigured("greenhouse"), fetchJobs: fetchGreenhouseJobs },
+      lever: { configured: atsConfigured("lever"), fetchJobs: fetchLeverJobs },
+      ashby: { configured: atsConfigured("ashby"), fetchJobs: fetchAshbyJobs },
+      smartrecruiters: { configured: atsConfigured("smartrecruiters"), fetchJobs: fetchSmartRecruitersJobs }
+    } as const;
+    if (!(selected in connectors)) {
+      return NextResponse.json({ ok: false, error: `Source inconnue: ${selected}` }, { status: 400 });
+    }
+    const connector = connectors[selected as keyof typeof connectors];
+    const result = connector.configured
+      ? await ingestSource(selected, connector.fetchJobs)
+      : { source: selected, status: "skipped", fetched: 0, inserted: 0 } satisfies SourceResult;
+    const sources = [result];
 
     const slack = await deliverSlackOutbox();
     const userSlack = await deliverUserSlackOutbox();
-    const successful = sources.filter((source) => source.status === "success");
     const fetched = sources.reduce((total, source) => total + source.fetched, 0);
     const inserted = sources.reduce((total, source) => total + source.inserted, 0);
-    const ok = successful.length > 0;
+    const ok = result.status !== "failed";
 
     return NextResponse.json(
-      { ok, source: "multi-source", fetched, inserted, sources, slack, userSlack, durationMs: Date.now() - startedAt },
+      { ok, source: selected, fetched, inserted, sources, slack, userSlack, durationMs: Date.now() - startedAt },
       { status: ok ? 200 : 500 }
     );
   } catch (error) {

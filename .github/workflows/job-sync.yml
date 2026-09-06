@@ -13,11 +13,23 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        source:
+          - france-travail
+          - la-bonne-alternance
+          - greenhouse
+          - lever
+          - ashby
+          - smartrecruiters
     steps:
-      - name: Appeler JobPulse
+      - name: Synchroniser ${{ matrix.source }}
         env:
           CRON_URL: ${{ secrets.JOBPULSE_CRON_URL }}
           CRON_SECRET: ${{ secrets.JOBPULSE_CRON_SECRET }}
+          SOURCE: ${{ matrix.source }}
         run: |
           test -n "$CRON_URL"
           test -n "$CRON_SECRET"
@@ -25,4 +37,4 @@ jobs:
             --retry 2 --retry-delay 10 \
             --max-time 90 \
             -H "Authorization: Bearer $CRON_SECRET" \
-            "$CRON_URL"
+            "${CRON_URL}?source=${SOURCE}"
