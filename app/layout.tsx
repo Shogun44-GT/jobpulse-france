@@ -6,7 +6,9 @@ import "./auth-components.css";
 import "./profile/profile.css";
 import "./applications/applications.css";
 import "./dashboard-actions.css";
+import "./ai-actions.css";
 import "./settings/slack/slack.css";
+import "./settings/ai/ai.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {

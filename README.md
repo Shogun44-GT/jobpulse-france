@@ -1,5 +1,9 @@
 # JobPulse France
 
+## Accroches IA avec clé personnelle
+
+La migration `010_user_ai.sql` ajoute la configuration Gemini par utilisateur et le journal anti-abus. La clé est vérifiée puis chiffrée avec `SLACK_TOKEN_ENCRYPTION_KEY`; elle n'est jamais renvoyée au navigateur. Chaque utilisateur consomme son propre quota Gemini et peut supprimer sa clé depuis `/settings/ai`.
+
 Un agrégateur rapide d'offres de stage, d'alternance et de premier emploi tech en France. Le dépôt contient maintenant le socle et le premier connecteur officiel.
 
 ## Ce qui fonctionne déjà
