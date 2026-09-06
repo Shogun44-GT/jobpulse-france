@@ -1,117 +1,167 @@
 # JobPulse France
 
-## Accroches IA avec clé personnelle
+> Des offres tech françaises détectées à la source, classées selon le profil du candidat et envoyées sur Slack.
 
-La migration `010_user_ai.sql` ajoute la configuration Gemini par utilisateur et le journal anti-abus. La clé est vérifiée puis chiffrée avec `SLACK_TOKEN_ENCRYPTION_KEY`; elle n'est jamais renvoyée au navigateur. Chaque utilisateur consomme son propre quota Gemini et peut supprimer sa clé depuis `/settings/ai`.
+[Voir l'application](https://jobpulse-france.vercel.app) · [Signaler un problème](https://github.com/Shogun44-GT/jobpulse-france/issues)
 
-Un agrégateur rapide d'offres de stage, d'alternance et de premier emploi tech en France. Le dépôt contient maintenant le socle et le premier connecteur officiel.
+## Pourquoi JobPulse ?
 
-## Ce qui fonctionne déjà
+Les meilleures offres de stage, d'alternance et de premier emploi reçoivent rapidement beaucoup de candidatures. JobPulse interroge directement plusieurs sources officielles et ATS publics, élimine les doublons, calcule un score personnalisé et envoie les nouvelles offres pertinentes sur Slack.
 
-- Dashboard sombre et responsive inspiré du produit de référence
-- Base PostgreSQL pour les sources, offres, utilisateurs, préférences et alertes
-- Route sécurisée `POST /api/ingest`
-- Validation stricte des offres avec Zod
-- Déduplication exacte par couple source/identifiant externe
-- Route de lecture `GET /api/jobs`
-- Jeu de données visuel de démonstration
-- Connecteur OAuth2 France Travail et normalisation des offres
-- Connecteur officiel La Bonne Alternance, optionnel tant que sa clé API n'est pas configurée
-- Exclusion des annonces France Travail renvoyées par La Bonne Alternance pour éviter les doubles alertes
-- Dédoublonnage flou inter-sources par similarité entreprise, titre et localisation
-- Connecteurs ATS publics Greenhouse, Lever, Ashby et SmartRecruiters, configurables par entreprise
-- Synchronisations séparées par source afin de respecter la durée maximale des fonctions Vercel
-- Chemin rapide pour les offres déjà connues : le dédoublonnage flou est réservé aux nouvelles offres
-- Livraison Slack séparée, exécutée une seule fois après l'ingestion de toutes les sources
-- Rappel Slack individuel trois jours avant la date limite, envoyé une seule fois par offre
-- Conservation des doublons en base pour l'audit, sans double affichage ni double alerte Slack
-- Recherches France Travail ciblées stage, alternance et apprentissage dans l'informatique
-- Synchronisation protégée par `CRON_SECRET`, planifiée toutes les 10 minutes avec GitHub Actions
-- Recherche réelle, filtres contrat/ville/télétravail et compteur dynamique
-- Test du webhook Slack via `POST /api/slack/test`
-- File d'envoi Slack persistante avec trois tentatives et zéro notification en double
-- Alertes Slack limitées aux contrats configurés dans `SLACK_CONTRACTS`
-- Connexion publique Google avec sessions JWT sécurisées
-- Création ou mise à jour du compte utilisateur dans PostgreSQL à chaque connexion
-- Pages protégées pour le profil, les candidatures et la future connexion Slack individuelle
-- Profil candidat complet enregistré dans PostgreSQL : métiers, compétences, parcours, villes, contrats, télétravail et score minimal
-- Suivi personnel des candidatures avec statuts, notes, lien vers l'offre et suppression sécurisée
-- Ajout d'une offre depuis le marque-page du dashboard, sans doublon par utilisateur
-- Connexion Slack OAuth individuelle avec choix du canal pendant l'autorisation
-- Chiffrement AES-256-GCM des webhooks Slack et alertes filtrées par profil utilisateur
-- Score de compatibilité réel et explicable basé sur le métier, les compétences, le contrat, la ville et le télétravail
-- Respect du score minimum du profil avant l'envoi d'une alerte Slack individuelle
+## Fonctionnalités
 
-Le scoring affiché pour les utilisateurs connectés est calculé à partir de leur profil. Les utilisateurs sans profil ne voient aucun pourcentage artificiel.
+- Collecte multi-sources : France Travail, La Bonne Alternance, Greenhouse, Lever, Ashby et SmartRecruiters
+- Synchronisation planifiée source par source pour éviter les timeouts
+- Déduplication exacte et floue entre plusieurs plateformes
+- Recherche et filtres par contrat, ville et télétravail
+- Connexion Google et espace personnel
+- Profil candidat : métiers, compétences, parcours, localisation et score minimum
+- Import sécurisé du CV PDF avec extraction locale du texte
+- Score de compatibilité enrichi par le profil et le CV
+- Connexion Slack OAuth individuelle et alertes personnalisées
+- Rappels avant la date limite de candidature
+- Suivi des candidatures avec statuts et notes
+- Génération d'accroche, de lettre et de message LinkedIn avec la clé Gemini personnelle de l'utilisateur
 
-## Lancement local
+## Protection des données
 
-Prérequis : Node.js 20+, npm et Docker Desktop.
+- Le PDF original du CV est analysé en mémoire puis supprimé immédiatement.
+- Le texte extrait du CV et les webhooks Slack sont chiffrés en AES-256-GCM avant stockage.
+- Les clés Gemini sont personnelles, chiffrées et jamais envoyées au navigateur.
+- Les utilisateurs peuvent remplacer ou supprimer leur CV et leur clé Gemini.
+- Aucun secret ne doit être ajouté au dépôt Git.
+
+## Architecture
+
+| Composant | Technologie |
+| --- | --- |
+| Application | Next.js 16, React 19, TypeScript |
+| Authentification | Auth.js / Google OAuth |
+| Base de données | PostgreSQL / Neon |
+| Validation | Zod |
+| Extraction PDF | unpdf |
+| Notifications | Slack OAuth et Incoming Webhooks |
+| IA | Gemini avec clé personnelle de l'utilisateur |
+| Hébergement | Vercel |
+| Planification | GitHub Actions |
+
+## Sources d'offres
+
+| Source | Type | Configuration |
+| --- | --- | --- |
+| France Travail | API OAuth2 officielle | Identifiants développeur requis |
+| La Bonne Alternance | API officielle | Clé API requise |
+| Greenhouse | ATS public | Liste d'entreprises |
+| Lever | ATS public | Liste d'entreprises |
+| Ashby | ATS public | Liste d'entreprises |
+| SmartRecruiters | ATS public | Liste d'entreprises |
+
+## Installation locale
+
+### Prérequis
+
+- Node.js 20 ou supérieur
+- npm
+- Docker Desktop
+
+### Démarrage
 
 ```bash
-cp .env.example .env.local
-docker compose up -d
 npm install
+docker compose up -d
 npm run db:migrate
 npm run db:seed
 npm run dev
 ```
 
-Ouvre ensuite `http://localhost:3000`.
+L'application est ensuite accessible sur `http://localhost:3000`.
 
-## Activer France Travail
+## Variables d'environnement
 
-Crée une application sur le portail France Travail, active l'API des offres d'emploi puis copie le client ID et le secret dans `.env.local`. Les URL sont configurables dans ce fichier afin de pouvoir les modifier sans toucher au code si France Travail fait évoluer son portail.
+Crée un fichier `.env.local`. Ne publie jamais ses valeurs.
 
-Pour déclencher une synchronisation manuelle :
+### Base et sécurité
 
-```bash
-curl http://localhost:3000/api/cron/sync \
-  -H "Authorization: Bearer replace-with-another-long-random-secret"
+```env
+POSTGRES_URL=
+AUTH_SECRET=
+CRON_SECRET=
+INGEST_API_KEY=
+SLACK_TOKEN_ENCRYPTION_KEY=
+APP_URL=http://localhost:3000
 ```
 
-Sans PostgreSQL configuré, le dashboard conserve ses cartes de démonstration. Dès que la base et les identifiants France Travail sont actifs, les offres réelles les remplacent.
+`SLACK_TOKEN_ENCRYPTION_KEY` doit contenir exactement 64 caractères hexadécimaux. Elle protège également le texte des CV et les clés Gemini.
 
-## Activer La Bonne Alternance
+### Google OAuth
 
-Demande une clé dans l'espace développeur de l'API Apprentissage, puis ajoute-la dans `LA_BONNE_ALTERNANCE_API_KEY`. Le connecteur recherche par défaut les métiers informatiques ROME définis dans `LA_BONNE_ALTERNANCE_ROMES`. Sans clé, cette source est simplement indiquée comme `skipped` dans la réponse du cron et France Travail continue de fonctionner.
-
-## Tester Slack
-
-Après avoir ajouté `SLACK_WEBHOOK_URL`, redémarre le serveur puis appelle la route de test avec le même `CRON_SECRET` que le cron. Un message « Connexion Slack réussie » doit apparaître dans le canal choisi. Les nouvelles offres correspondant à `SLACK_CONTRACTS` sont ensuite mises en file et envoyées pendant les synchronisations. Les offres déjà présentes avant cette version ne sont volontairement pas envoyées afin d'éviter un afflux initial.
-
-### Slack individuel
-
-Crée une Slack App, active **Incoming Webhooks** et ajoute l'URL de redirection `https://jobpulse-france.vercel.app/api/slack/callback`. Configure ensuite `APP_URL`, `SLACK_CLIENT_ID`, `SLACK_CLIENT_SECRET` et une clé hexadécimale de 64 caractères dans `SLACK_TOKEN_ENCRYPTION_KEY`. La connexion demande uniquement le scope `incoming-webhook`, qui laisse l'utilisateur choisir le canal pendant l'autorisation.
-
-## Tester l'ingestion
-
-Remplace la clé ci-dessous par celle de `.env.local` :
-
-```bash
-curl -X POST http://localhost:3000/api/ingest \
-  -H "Authorization: Bearer replace-with-a-long-random-secret" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "externalId": "ft-123456",
-    "source": "france-travail",
-    "company": "Exemple SAS",
-    "title": "Stage développeur TypeScript",
-    "description": "Développement d une application Next.js",
-    "location": "Paris",
-    "contract": "stage",
-    "remote": true,
-    "applyUrl": "https://example.com/jobs/ft-123456",
-    "publishedAt": "2026-09-04T18:00:00.000Z"
-  }'
+```env
+AUTH_GOOGLE_ID=
+AUTH_GOOGLE_SECRET=
 ```
 
-Deux appels avec le même `source` et `externalId` mettent à jour `last_seen_at` au lieu de créer un doublon.
+### Slack OAuth
 
-## Déploiement prévu
+```env
+SLACK_CLIENT_ID=
+SLACK_CLIENT_SECRET=
+SLACK_WEBHOOK_URL=
+SLACK_CONTRACTS=stage,alternance,graduate
+```
 
-La cible est Vercel Hobby avec Neon Postgres. GitHub Actions appelle la route de synchronisation toutes les 10 minutes, car le cron Vercel Hobby est limité à une exécution quotidienne. Les secrets GitHub `JOBPULSE_CRON_URL` et `JOBPULSE_CRON_SECRET` doivent être configurés après le déploiement.
+### France Travail
 
-## Prochaine étape
+```env
+FRANCE_TRAVAIL_CLIENT_ID=
+FRANCE_TRAVAIL_CLIENT_SECRET=
+FRANCE_TRAVAIL_TOKEN_URL=
+FRANCE_TRAVAIL_API_URL=
+```
 
-Ajouter Greenhouse, Lever, Ashby et SmartRecruiters.
+### Autres sources
+
+```env
+LA_BONNE_ALTERNANCE_API_KEY=
+LA_BONNE_ALTERNANCE_ROMES=
+GREENHOUSE_BOARDS=
+LEVER_SITES=
+ASHBY_BOARDS=
+SMARTRECRUITERS_COMPANIES=
+```
+
+Une source non configurée est ignorée sans bloquer les autres.
+
+## Commandes utiles
+
+```bash
+npm run dev        # serveur de développement
+npm run build      # compilation de production
+npm run db:migrate # migrations PostgreSQL
+npm run db:seed    # données locales de démonstration
+```
+
+## Synchronisation manuelle
+
+```bash
+curl "http://localhost:3000/api/cron/sync?source=france-travail" \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+Sources acceptées : `france-travail`, `la-bonne-alternance`, `greenhouse`, `lever`, `ashby`, `smartrecruiters` et `notifications`.
+
+## Déploiement
+
+1. Relier le dépôt GitHub à Vercel.
+2. Relier une base Neon au projet.
+3. Ajouter les variables d'environnement dans Vercel.
+4. Exécuter les migrations sur la base de production.
+5. Configurer les secrets GitHub `JOBPULSE_CRON_URL` et `JOBPULSE_CRON_SECRET`.
+6. Vérifier le workflow dans l'onglet **Actions**.
+
+## État du projet
+
+JobPulse est en phase de bêta publique contrôlée. Les retours prioritaires concernent la qualité des offres, la pertinence du score et la fiabilité des alertes.
+
+## Auteur
+
+Développé par [Shogun44-GT](https://github.com/Shogun44-GT).
