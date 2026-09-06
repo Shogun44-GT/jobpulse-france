@@ -5,7 +5,7 @@ import { generateApplicationHook } from "@/lib/gemini";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-const schema = z.object({ jobId: z.string().uuid("Offre invalide") });
+const schema = z.object({ jobId: z.string().uuid("Offre invalide"), format: z.enum(["hook", "letter", "linkedin"]).default("hook") });
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -32,6 +32,7 @@ export async function POST(request: Request) {
   try {
     const hook = await generateApplicationHook({
       apiKey: decryptSecret(row.api_key_ciphertext as string, row.api_key_iv as string),
+      format: parsed.data.format,
       job: { title: row.title as string, company: row.company as string, location: row.location as string, contract: row.contract as string | null, description: row.description as string },
       profile: { headline: (row.headline as string | null) ?? "", educationLevel: (row.education_level as string | null) ?? "", experienceYears: (row.experience_years as number | null) ?? 0, skills: (row.skills as string[] | null) ?? [], desiredRoles: (row.desired_roles as string[] | null) ?? [] }
     });

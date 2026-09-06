@@ -23,7 +23,7 @@ export default function Dashboard() {
   const [savingJob, setSavingJob] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [generatingJob, setGeneratingJob] = useState<string | null>(null);
-  const [generatedHooks, setGeneratedHooks] = useState<Record<string,string>>({});
+  const [generatedHooks, setGeneratedHooks] = useState<Record<string,{text:string;label:string}>>({});
   const apiQuery = useMemo(() => {
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
@@ -74,18 +74,19 @@ export default function Dashboard() {
     finally { setSavingJob(null); }
   }
 
-  async function generateHook(jobId:string){
+  async function generateHook(jobId:string,format:"hook"|"letter"|"linkedin"){
     if(!session?.user){await signIn("google",{callbackUrl:"/"});return;}
-    setGeneratingJob(jobId);setNotice("");
+    setGeneratingJob(`${jobId}:${format}`);setNotice("");
     try{
-      const response=await fetch("/api/ai/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jobId})});
+      const response=await fetch("/api/ai/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jobId,format})});
       const data=await response.json();
       if(!response.ok){
         if(data.needsSetup){window.location.href="/settings/ai";return;}
         if(data.needsProfile){window.location.href="/profile";return;}
         throw new Error(data.error??"Génération impossible");
       }
-      setGeneratedHooks(current=>({...current,[jobId]:data.hook}));
+      const labels={hook:"Accroche",letter:"Lettre de motivation",linkedin:"Message LinkedIn"};
+      setGeneratedHooks(current=>({...current,[jobId]:{text:data.hook,label:labels[format]}}));
     }catch(error){setNotice(error instanceof Error?error.message:"Génération impossible")}finally{setGeneratingJob(null)}
   }
 
@@ -96,7 +97,7 @@ export default function Dashboard() {
     <section className="filters"><div className="search"><Search size={18}/><input aria-label="Rechercher" value={query} onChange={e => setQuery(e.target.value)} placeholder="Entreprise, métier, technologie…"/><button><SlidersHorizontal size={16}/> Filtres</button></div><div className="chips">{contracts.map(item => <button onClick={() => setSelectedContract(item)} className={selectedContract === item ? "selected" : ""} key={item}>{item}</button>)}</div><div className="filterBottom"><div className="select"><MapPin size={15}/><select aria-label="Ville" value={location} onChange={e => setLocation(e.target.value)}>{cities.map(city => <option key={city}>{city}</option>)}</select><ChevronDown size={14}/></div><label><input type="checkbox" checked={remote} onChange={e => setRemote(e.target.checked)}/> Télétravail possible</label><span className="resultCount">{loading ? "Chargement…" : `${total.toLocaleString("fr-FR")} résultats`}</span><button className="sort">Plus récentes <ChevronDown size={14}/></button></div></section>
     <section className="sectionHead"><div><h2>Offres fraîchement détectées</h2><p>Mises à jour automatiquement, sans doublons.</p></div><span><span className="liveDot"/> EN DIRECT</span></section>
     {notice && <div className="dashboardNotice">{notice}<Link href="/applications">Voir mes candidatures</Link></div>}
-    <section className="grid">{jobs.map(job => <article className="job" key={job.id}><header><div className="company"><span className="logo">{job.logo || job.company.charAt(0)}</span><div><strong>{job.company}</strong><small>{job.source}</small></div></div><button className={savedJobs.has(job.id)?"savedBookmark":""} disabled={savingJob===job.id} onClick={()=>followJob(job.id)} aria-label={savedJobs.has(job.id)?"Voir dans mes candidatures":"Ajouter à mes candidatures"} title={savedJobs.has(job.id)?"Déjà suivie":"Suivre cette candidature"}><Bookmark size={17} fill={savedJobs.has(job.id)?"currentColor":"none"}/></button></header><h3>{job.title}</h3><div className="meta"><span><MapPin size={13}/>{job.location}</span>{job.remote && <span>Télétravail</span>}</div><div className="tags"><span>{job.contract || "non précisé"}</span><span>Tech</span></div><footer>{job.score ? <><div><small>Compatibilité</small><strong>{job.score}%</strong></div><div className="bar"><i style={{width:`${job.score}%`}}/></div></> : <><div/><div/></>}<a href={job.applyUrl} target="_blank" rel="noreferrer">Postuler <ExternalLink size={13}/></a></footer><button className="generateHook" onClick={()=>generateHook(job.id)} disabled={generatingJob===job.id}><Sparkles size={14}/>{generatingJob===job.id?"Génération…":"Générer une accroche"}</button>{generatedHooks[job.id]&&<div className="hookResult"><p>{generatedHooks[job.id]}</p><button onClick={async()=>{await navigator.clipboard.writeText(generatedHooks[job.id]);setNotice("Accroche copiée.")}}><Copy size={13}/>Copier</button></div>}<div className="posted"><Clock3 size={12}/>{job.publishedAt?.startsWith("Il") ? job.publishedAt : job.publishedAt ? new Date(job.publishedAt).toLocaleDateString("fr-FR",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "Date inconnue"}</div></article>)}{!loading && jobs.length === 0 && <div className="empty">Aucune offre ne correspond à ces filtres.</div>}</section>
+    <section className="grid">{jobs.map(job => <article className="job" key={job.id}><header><div className="company"><span className="logo">{job.logo || job.company.charAt(0)}</span><div><strong>{job.company}</strong><small>{job.source}</small></div></div><button className={savedJobs.has(job.id)?"savedBookmark":""} disabled={savingJob===job.id} onClick={()=>followJob(job.id)} aria-label={savedJobs.has(job.id)?"Voir dans mes candidatures":"Ajouter à mes candidatures"} title={savedJobs.has(job.id)?"Déjà suivie":"Suivre cette candidature"}><Bookmark size={17} fill={savedJobs.has(job.id)?"currentColor":"none"}/></button></header><h3>{job.title}</h3><div className="meta"><span><MapPin size={13}/>{job.location}</span>{job.remote && <span>Télétravail</span>}</div><div className="tags"><span>{job.contract || "non précisé"}</span><span>Tech</span></div><footer>{job.score ? <><div><small>Compatibilité</small><strong>{job.score}%</strong></div><div className="bar"><i style={{width:`${job.score}%`}}/></div></> : <><div/><div/></>}<a href={job.applyUrl} target="_blank" rel="noreferrer">Postuler <ExternalLink size={13}/></a></footer><div className="aiFormats"><button onClick={()=>generateHook(job.id,"hook")} disabled={Boolean(generatingJob)}><Sparkles size={13}/>{generatingJob===`${job.id}:hook`?"Génération…":"Accroche"}</button><button onClick={()=>generateHook(job.id,"letter")} disabled={Boolean(generatingJob)}>{generatingJob===`${job.id}:letter`?"Génération…":"Lettre"}</button><button onClick={()=>generateHook(job.id,"linkedin")} disabled={Boolean(generatingJob)}>{generatingJob===`${job.id}:linkedin`?"Génération…":"LinkedIn"}</button></div>{generatedHooks[job.id]&&<div className="hookResult"><strong>{generatedHooks[job.id].label}</strong><p>{generatedHooks[job.id].text}</p><button onClick={async()=>{await navigator.clipboard.writeText(generatedHooks[job.id].text);setNotice("Texte copié.")}}><Copy size={13}/>Copier</button></div>}<div className="posted"><Clock3 size={12}/>{job.publishedAt?.startsWith("Il") ? job.publishedAt : job.publishedAt ? new Date(job.publishedAt).toLocaleDateString("fr-FR",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "Date inconnue"}</div></article>)}{!loading && jobs.length === 0 && <div className="empty">Aucune offre ne correspond à ces filtres.</div>}</section>
     <section className="cta"><Sparkles size={22}/><div><strong>Transforme l’alerte en candidature</strong><p>Utilise ton profil et ta propre clé Gemini pour générer une accroche personnalisée.</p></div><Link className="ctaButton" href="/settings/ai">Configurer l’IA</Link></section>
   </main>;
 }

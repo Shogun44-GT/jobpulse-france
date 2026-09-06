@@ -15,20 +15,26 @@ export async function validateGeminiKey(apiKey: string) {
 
 type GenerateInput = {
   apiKey: string;
+  format: "hook" | "letter" | "linkedin";
   job: { title: string; company: string; location: string; contract: string | null; description: string };
   profile: { headline: string; educationLevel: string; experienceYears: number; skills: string[]; desiredRoles: string[] };
 };
 
-export async function generateApplicationHook({ apiKey, job, profile }: GenerateInput) {
-  const prompt = `Tu es un excellent coach en candidature pour le marché français. Rédige une accroche de candidature en français, naturelle, précise et crédible.
+const formatInstructions = {
+  hook: "Rédige une accroche de candidature de 80 à 120 mots, en un seul paragraphe. Produis uniquement le texte final, sans titre, liste, guillemets ni commentaire.",
+  letter: "Rédige une lettre de motivation complète de 250 à 350 mots. Structure-la en 4 paragraphes courts : intérêt précis pour le poste, adéquation du profil, contribution possible, conclusion avec demande d'échange. N'invente ni nom de destinataire ni adresse. Produis uniquement la lettre, sans objet ni commentaire.",
+  linkedin: "Rédige un message LinkedIn de 60 à 90 mots destiné à un recruteur de l'entreprise. Le message doit être direct, chaleureux, spécifique au poste et se terminer par une demande d'échange simple. Produis uniquement le message, sans titre, guillemets ni commentaire."
+} as const;
+
+export async function generateApplicationHook({ apiKey, format, job, profile }: GenerateInput) {
+  const prompt = `Tu es un excellent coach en candidature pour le marché français. ${formatInstructions[format]}
 
 Contraintes :
-- 80 à 120 mots, un seul paragraphe ;
 - ton professionnel et humain, sans flatterie générique ;
 - relier uniquement les compétences réellement présentes dans le profil aux besoins visibles dans l'offre ;
 - ne jamais inventer d'expérience, de diplôme, de résultat chiffré ou de compétence ;
 - ne pas commencer par « Je me permets » ;
-- produire uniquement le texte final, sans titre, liste, guillemets ni commentaire.
+- écrire un texte immédiatement utilisable, sans champs entre crochets.
 
 PROFIL CANDIDAT (données de référence) :
 Présentation : ${profile.headline || "Non renseignée"}
