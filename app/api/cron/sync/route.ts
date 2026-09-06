@@ -55,6 +55,14 @@ export async function GET(request: NextRequest) {
   const startedAt = Date.now();
   try {
     const selected = request.nextUrl.searchParams.get("source") || "france-travail";
+    if (selected === "notifications") {
+      const slack = await deliverSlackOutbox();
+      const userSlack = await deliverUserSlackOutbox();
+      return NextResponse.json({
+        ok: true, source: selected, fetched: 0, inserted: 0, sources: [],
+        slack, userSlack, durationMs: Date.now() - startedAt
+      });
+    }
     const connectors = {
       "france-travail": { configured: true, fetchJobs: fetchFranceTravailJobs },
       "la-bonne-alternance": { configured: isLaBonneAlternanceConfigured(), fetchJobs: fetchLaBonneAlternanceJobs },
@@ -72,8 +80,8 @@ export async function GET(request: NextRequest) {
       : { source: selected, status: "skipped", fetched: 0, inserted: 0 } satisfies SourceResult;
     const sources = [result];
 
-    const slack = await deliverSlackOutbox();
-    const userSlack = await deliverUserSlackOutbox();
+    const slack = { deferred: true };
+    const userSlack = { deferred: true };
     const fetched = sources.reduce((total, source) => total + source.fetched, 0);
     const inserted = sources.reduce((total, source) => total + source.inserted, 0);
     const ok = result.status !== "failed";

@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  sync:
+  ingest:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     strategy:
@@ -38,3 +38,22 @@ jobs:
             --max-time 90 \
             -H "Authorization: Bearer $CRON_SECRET" \
             "${CRON_URL}?source=${SOURCE}"
+
+  notify:
+    needs: ingest
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Envoyer les notifications Slack
+        env:
+          CRON_URL: ${{ secrets.JOBPULSE_CRON_URL }}
+          CRON_SECRET: ${{ secrets.JOBPULSE_CRON_SECRET }}
+        run: |
+          test -n "$CRON_URL"
+          test -n "$CRON_SECRET"
+          curl --fail --silent --show-error \
+            --retry 2 --retry-delay 10 \
+            --max-time 90 \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "${CRON_URL}?source=notifications"

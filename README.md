@@ -18,6 +18,7 @@ Un agrégateur rapide d'offres de stage, d'alternance et de premier emploi tech 
 - Connecteurs ATS publics Greenhouse, Lever, Ashby et SmartRecruiters, configurables par entreprise
 - Synchronisations séparées par source afin de respecter la durée maximale des fonctions Vercel
 - Chemin rapide pour les offres déjà connues : le dédoublonnage flou est réservé aux nouvelles offres
+- Livraison Slack séparée, exécutée une seule fois après l'ingestion de toutes les sources
 - Conservation des doublons en base pour l'audit, sans double affichage ni double alerte Slack
 - Recherches France Travail ciblées stage, alternance et apprentissage dans l'informatique
 - Synchronisation protégée par `CRON_SECRET`, planifiée toutes les 10 minutes avec GitHub Actions
