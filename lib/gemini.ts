@@ -51,8 +51,8 @@ Description : ${job.description.slice(0, 9_000)}`;
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.55,
-        maxOutputTokens: 1_000,
-        thinkingConfig: { thinkingLevel: "low" }
+        maxOutputTokens: 4_096,
+        thinkingConfig: { thinkingLevel: "minimal" }
       }
     }),
     signal: AbortSignal.timeout(25_000)
