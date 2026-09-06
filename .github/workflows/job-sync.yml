@@ -2,7 +2,8 @@ name: Synchronisation des offres
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    # Décalé du début d'heure, période souvent plus chargée sur GitHub Actions.
+    - cron: "3,13,23,33,43,53 * * * *"
   workflow_dispatch:
 
 concurrency:

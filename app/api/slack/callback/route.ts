@@ -24,7 +24,7 @@ export async function GET(request: Request) {
   const data = await exchange.json() as SlackOAuthResponse;
   const webhook = data.incoming_webhook;
   if (!data.ok || !webhook?.url || !webhook.channel_id) { destination.searchParams.set("error", data.error || "oauth"); return NextResponse.redirect(destination); }
-  const encrypted = encryptSecret(webhook.url);
+  const encrypted = encryptSecret(webhook.url, "slack");
   const email = session.user.email.toLowerCase();
   await sql`
     INSERT INTO slack_connections (user_id, team_id, team_name, channel_id, channel_name, webhook_ciphertext, webhook_iv)

@@ -10,7 +10,7 @@ function getClient() {
 }
 
 type QueryResult = { rows: Record<string, unknown>[] };
-type SqlTag = ((strings: TemplateStringsArray, ...values: any[]) => Promise<QueryResult>) & {
+export type SqlTag = ((strings: TemplateStringsArray, ...values: any[]) => Promise<QueryResult>) & {
   query: (query: string) => Promise<QueryResult>;
 };
 
@@ -25,6 +25,17 @@ export const sql = Object.assign(taggedQuery, {
     return { rows: Array.from(rows) };
   }
 }) as SqlTag;
+
+export async function withTransaction<T>(callback: (transaction: SqlTag) => Promise<T>) {
+  return getClient().begin(async (rawTransaction) => {
+    const transaction = (async (strings: TemplateStringsArray, ...values: any[]): Promise<QueryResult> => {
+      const rows = await rawTransaction(strings, ...values);
+      return { rows: Array.from(rows) };
+    }) as SqlTag;
+    transaction.query = async (query: string) => ({ rows: Array.from(await rawTransaction.unsafe(query)) });
+    return callback(transaction);
+  }) as Promise<T>;
+}
 
 export async function closeDb() {
   if (client) await client.end({ timeout: 5 });

@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "db:migrate": "tsx --env-file=.env.local scripts/migrate.ts",
-    "db:seed": "tsx --env-file=.env.local scripts/seed.ts"
+    "db:seed": "tsx --env-file=.env.local scripts/seed.ts",
+    "secrets:rotate": "tsx --env-file=.env.local scripts/rotate-secrets.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
@@ -25,6 +27,7 @@
     "@types/react": "^19.0.3",
     "@types/react-dom": "^19.0.2",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^5.0.0"
   }
 }

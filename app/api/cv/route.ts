@@ -31,7 +31,7 @@ export async function POST(request:Request){
     const extracted=await Promise.race([extractText(pdf,{mergePages:true}),new Promise<never>((_,reject)=>setTimeout(()=>reject(new Error("timeout")),12_000))]);
     const text=extracted.text.replace(/\u0000/g,"").replace(/[ \t]+/g," ").trim().slice(0,50_000);
     if(text.length<120)return NextResponse.json({error:"Ce PDF ne contient pas assez de texte. Utilise un CV PDF non scanné."},{status:422});
-    const encrypted=encryptSecret(text);const hash=createHash("sha256").update(bytes).digest("hex");
+    const encrypted=encryptSecret(text,"cv");const hash=createHash("sha256").update(bytes).digest("hex");
     const result=await sql`INSERT INTO candidate_cvs(user_id,file_name,file_size,page_count,text_ciphertext,text_iv,text_length,content_hash) SELECT id,${file.name.slice(0,180)},${file.size},${extracted.totalPages},${encrypted.ciphertext},${encrypted.iv},${text.length},${hash} FROM users WHERE LOWER(email)=${userEmail} ON CONFLICT(user_id) DO UPDATE SET file_name=EXCLUDED.file_name,file_size=EXCLUDED.file_size,page_count=EXCLUDED.page_count,text_ciphertext=EXCLUDED.text_ciphertext,text_iv=EXCLUDED.text_iv,text_length=EXCLUDED.text_length,content_hash=EXCLUDED.content_hash,updated_at=NOW() RETURNING user_id`;
     if(!result.rows[0])return NextResponse.json({error:"Compte utilisateur introuvable"},{status:404});
     return NextResponse.json({ok:true,cv:{fileName:file.name,fileSize:file.size,pageCount:extracted.totalPages,textLength:text.length},detectedSkills:extractCvSkills(text)});

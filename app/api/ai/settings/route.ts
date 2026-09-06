@@ -23,7 +23,7 @@ export async function PUT(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Clé invalide" }, { status: 400 });
   try { await validateGeminiKey(parsed.data.apiKey); }
   catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Clé invalide" }, { status: 400 }); }
-  const encrypted = encryptSecret(parsed.data.apiKey);
+  const encrypted = encryptSecret(parsed.data.apiKey, "gemini");
   const result = await sql`
     INSERT INTO user_ai_settings (user_id,provider,model,api_key_ciphertext,api_key_iv,api_key_last_four)
     SELECT id,'gemini',${geminiModel},${encrypted.ciphertext},${encrypted.iv},${parsed.data.apiKey.slice(-4)} FROM users WHERE LOWER(email)=${userEmail}

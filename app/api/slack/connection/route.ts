@@ -16,7 +16,7 @@ export async function POST(){
   const userEmail=await email();if(!userEmail)return NextResponse.json({error:"Non authentifié"},{status:401});
   const result=await sql`SELECT sc.webhook_ciphertext,sc.webhook_iv FROM slack_connections sc JOIN users u ON u.id=sc.user_id WHERE LOWER(u.email)=${userEmail} LIMIT 1`;
   const row=result.rows[0];if(!row)return NextResponse.json({error:"Slack n’est pas connecté"},{status:404});
-  const response=await fetch(decryptSecret(row.webhook_ciphertext as string,row.webhook_iv as string),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:"✅ JobPulse France est connecté. Tes prochaines alertes arriveront dans ce canal."})});
+  const response=await fetch(decryptSecret(row.webhook_ciphertext as string,row.webhook_iv as string,"slack"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text:"✅ JobPulse France est connecté. Tes prochaines alertes arriveront dans ce canal."})});
   if(!response.ok)return NextResponse.json({error:`Slack a répondu ${response.status}`},{status:502});
   return NextResponse.json({ok:true});
 }

@@ -27,6 +27,7 @@ Les meilleures offres de stage, d'alternance et de premier emploi reçoivent rap
 
 - Le PDF original du CV est analysé en mémoire puis supprimé immédiatement.
 - Le texte extrait du CV et les webhooks Slack sont chiffrés en AES-256-GCM avant stockage.
+- Des sous-clés indépendantes sont dérivées par usage (Slack, Gemini et CV) avec HKDF.
 - Les clés Gemini sont personnelles, chiffrées et jamais envoyées au navigateur.
 - Les utilisateurs peuvent remplacer ou supprimer leur CV et leur clé Gemini.
 - Aucun secret ne doit être ajouté au dépôt Git.
@@ -91,7 +92,7 @@ SLACK_TOKEN_ENCRYPTION_KEY=
 APP_URL=http://localhost:3000
 ```
 
-`SLACK_TOKEN_ENCRYPTION_KEY` doit contenir exactement 64 caractères hexadécimaux. Elle protège également le texte des CV et les clés Gemini.
+`SLACK_TOKEN_ENCRYPTION_KEY` doit contenir exactement 64 caractères hexadécimaux. C'est une clé maître : l'application en dérive une clé différente pour Slack, Gemini et les CV.
 
 ### Google OAuth
 
@@ -136,8 +137,10 @@ Une source non configurée est ignorée sans bloquer les autres.
 ```bash
 npm run dev        # serveur de développement
 npm run build      # compilation de production
+npm test           # tests du dédoublonnage, du matching et de la sécurité
 npm run db:migrate # migrations PostgreSQL
 npm run db:seed    # données locales de démonstration
+npm run secrets:rotate # rechiffre les secrets existants avec les sous-clés dédiées
 ```
 
 ## Synchronisation manuelle
@@ -157,6 +160,8 @@ Sources acceptées : `france-travail`, `la-bonne-alternance`, `greenhouse`, `lev
 4. Exécuter les migrations sur la base de production.
 5. Configurer les secrets GitHub `JOBPULSE_CRON_URL` et `JOBPULSE_CRON_SECRET`.
 6. Vérifier le workflow dans l'onglet **Actions**.
+
+La page publique n'affiche jamais les données de démonstration en production. Chaque exécution du cron est conservée pendant 30 jours dans `sync_runs` pour faciliter le diagnostic.
 
 ## État du projet
 

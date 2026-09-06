@@ -5,6 +5,7 @@ import { atsConfigured, fetchAshbyJobs, fetchGreenhouseJobs, fetchLeverJobs, fet
 import { upsertJob } from "@/lib/jobs";
 import { sql } from "@/lib/db";
 import { deliverDeadlineReminders, deliverSlackOutbox, deliverUserSlackOutbox, enqueueDeadlineReminders, enqueueSlack, enqueueUserSlack, shouldNotify } from "@/lib/slack";
+import { hasValidBearerToken } from "@/lib/bearer-auth";
 
 export const maxDuration = 60;
 
@@ -15,6 +16,18 @@ type SourceResult = {
   inserted: number;
   error?: string;
 };
+
+async function recordSync(result: SourceResult, startedAt: number) {
+  try {
+    await sql`
+      INSERT INTO sync_runs (source, status, fetched, inserted, duration_ms, error)
+      VALUES (${result.source}, ${result.status}, ${result.fetched}, ${result.inserted},
+        ${Date.now() - startedAt}, ${result.error ?? null})
+    `;
+  } catch (error) {
+    console.error("Impossible d'enregistrer le diagnostic de synchronisation", error);
+  }
+}
 
 async function setSourceStatus(slug: string, success: boolean) {
   if (success) await sql`UPDATE sources SET last_success_at = NOW() WHERE slug = ${slug}`;
@@ -49,7 +62,7 @@ async function ingestSource(slug: string, fetchJobs: () => Promise<Awaited<Retur
 
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!hasValidBearerToken(request.headers.get("authorization"), secret)) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
   const startedAt = Date.now();
@@ -60,6 +73,7 @@ export async function GET(request: NextRequest) {
       const slack = await deliverSlackOutbox();
       const userSlack = await deliverUserSlackOutbox();
       const deadlineReminders = await deliverDeadlineReminders();
+      await recordSync({ source: selected, status: "success", fetched: 0, inserted: 0 }, startedAt);
       return NextResponse.json({
         ok: true, source: selected, fetched: 0, inserted: 0, sources: [],
         slack, userSlack, remindersQueued, deadlineReminders, durationMs: Date.now() - startedAt
@@ -80,6 +94,7 @@ export async function GET(request: NextRequest) {
     const result = connector.configured
       ? await ingestSource(selected, connector.fetchJobs)
       : { source: selected, status: "skipped", fetched: 0, inserted: 0 } satisfies SourceResult;
+    await recordSync(result, startedAt);
     const sources = [result];
 
     const slack = { deferred: true };

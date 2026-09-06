@@ -1,9 +1,10 @@
-import { sql } from "./db";
+import { createHash } from "node:crypto";
+import { sql, withTransaction, type SqlTag } from "./db";
 import { fingerprint, type IncomingJob } from "./validation";
 import { duplicateScore } from "./deduplication";
 
-async function findDuplicate(job: IncomingJob, sourceId: string) {
-  const candidates = await sql`
+async function findDuplicate(database: SqlTag, job: IncomingJob, sourceId: string) {
+  const candidates = await database`
     SELECT id, company, title, location, contract
     FROM jobs
     WHERE active = TRUE
@@ -29,12 +30,19 @@ async function findDuplicate(job: IncomingJob, sourceId: string) {
 }
 
 export async function upsertJob(job: IncomingJob) {
-  const sourceResult = await sql`SELECT id FROM sources WHERE slug = ${job.source} AND enabled = TRUE LIMIT 1`;
-  const source = sourceResult.rows[0];
-  if (!source) throw new Error(`Source inconnue ou désactivée: ${job.source}`);
-  const jobFingerprint = fingerprint(job);
+  return withTransaction(async (database) => {
+    const sourceResult = await database`SELECT id FROM sources WHERE slug = ${job.source} AND enabled = TRUE LIMIT 1`;
+    const source = sourceResult.rows[0];
+    if (!source) throw new Error(`Source inconnue ou désactivée: ${job.source}`);
+    const jobFingerprint = fingerprint(job);
 
-  const existing = await sql`
+    const normalizeLockPart = (value: string) =>
+      value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+    const lockSeed = `${normalizeLockPart(job.company)}|${normalizeLockPart(job.title)}`;
+    const lockKey = createHash("sha256").update(lockSeed).digest().subarray(0, 8).readBigInt64BE().toString();
+    await database`SELECT pg_advisory_xact_lock(${lockKey}::bigint)`;
+
+  const existing = await database`
     UPDATE jobs SET
       last_seen_at = NOW(), active = TRUE, title = ${job.title},
       description = ${job.description}, location = ${job.location},
@@ -56,9 +64,9 @@ export async function upsertJob(job: IncomingJob) {
     };
   }
 
-  const duplicate = await findDuplicate(job, source.id as string);
+  const duplicate = await findDuplicate(database, job, source.id as string);
 
-  const result = await sql`
+  const result = await database`
     INSERT INTO jobs (
       source_id, external_id, fingerprint, company, title, description, location,
       contract, remote, apply_url, published_at, deadline_at, raw,
@@ -79,12 +87,13 @@ export async function upsertJob(job: IncomingJob) {
     RETURNING id, (xmax = 0) AS inserted, duplicate_of_job_id AS "duplicateOfJobId",
       deduplication_score AS "deduplicationScore"
   `;
-  const row = result.rows[0];
-  return {
-    id: row.id as string,
-    inserted: row.inserted as boolean,
-    duplicate: Boolean(row.duplicateOfJobId),
-    duplicateOfJobId: row.duplicateOfJobId as string | null,
-    deduplicationScore: row.deduplicationScore === null ? null : Number(row.deduplicationScore)
-  };
+    const row = result.rows[0];
+    return {
+      id: row.id as string,
+      inserted: row.inserted as boolean,
+      duplicate: Boolean(row.duplicateOfJobId),
+      duplicateOfJobId: row.duplicateOfJobId as string | null,
+      deduplicationScore: row.deduplicationScore === null ? null : Number(row.deduplicationScore)
+    };
+  });
 }

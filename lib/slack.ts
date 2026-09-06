@@ -131,7 +131,7 @@ export async function deliverUserSlackOutbox() {
     const outboxId = row.id as string;
     await sql`UPDATE user_notification_outbox SET status='sending', attempts=attempts+1 WHERE id=${outboxId}`;
     try {
-      const webhook = decryptSecret(row.webhook_ciphertext as string, row.webhook_iv as string);
+      const webhook = decryptSecret(row.webhook_ciphertext as string, row.webhook_iv as string, "slack");
       await postSlack({ id: row.jobId as string, company: row.company as string, title: row.title as string, location: row.location as string, contract: row.contract as string | undefined, remote: row.remote as boolean, applyUrl: row.applyUrl as string, source: row.source as string, publishedAt: row.publishedAt as string | undefined, score: row.match_score as number | undefined, matchReasons: row.match_reasons as string[] | undefined }, webhook);
       await sql`UPDATE user_notification_outbox SET status='sent', delivered_at=NOW(), last_error=NULL WHERE id=${outboxId}`;
       sent += 1;
@@ -179,7 +179,7 @@ export async function deliverDeadlineReminders() {
   for (const row of pending.rows) {
     await sql`UPDATE deadline_reminder_outbox SET status='sending', attempts=attempts+1 WHERE id=${row.id}`;
     try {
-      const webhook=decryptSecret(row.webhook_ciphertext as string,row.webhook_iv as string);
+      const webhook=decryptSecret(row.webhook_ciphertext as string,row.webhook_iv as string,"slack");
       await postSlack({ id:row.jobId as string, company:row.company as string, title:row.title as string,
         location:row.location as string, contract:row.contract as string|undefined, remote:row.remote as boolean,
         applyUrl:row.applyUrl as string, source:row.source as string, deadlineAt:row.deadlineAt as string,

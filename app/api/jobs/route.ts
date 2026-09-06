@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       WHERE LOWER(u.email)=${email} LIMIT 1
     `;
     profile = profileResult.rows[0] ?? null;
-    if(profile?.text_ciphertext){try{profile.cv_skills=extractCvSkills(decryptSecret(profile.text_ciphertext as string,profile.text_iv as string))}catch{profile.cv_skills=[]}}
+    if(profile?.text_ciphertext){try{profile.cv_skills=extractCvSkills(decryptSecret(profile.text_ciphertext as string,profile.text_iv as string,"cv"))}catch{profile.cv_skills=[]}}
   }
   const count = await sql`
     SELECT COUNT(*)::int AS total FROM jobs j WHERE j.active = TRUE AND j.duplicate_of_job_id IS NULL
@@ -49,6 +49,15 @@ export async function GET(request: NextRequest) {
       AND (${remote} = FALSE OR j.remote = TRUE)
   `;
   const total = count.rows[0].total as number;
+  const statsResult = await sql`
+    SELECT
+      COUNT(*) FILTER (WHERE COALESCE(published_at, first_seen_at) >= NOW() - INTERVAL '1 hour')::int AS recent,
+      COUNT(*) FILTER (WHERE contract = 'alternance')::int AS alternances,
+      COUNT(DISTINCT source_id)::int AS sources
+    FROM jobs
+    WHERE active = TRUE AND duplicate_of_job_id IS NULL
+  `;
+  const stats = statsResult.rows[0] ?? { recent: 0, alternances: 0, sources: 0 };
   const personalizedJobs = jobs.rows.map((row) => {
     const { description, ...publicJob } = row;
     if (!profile) return publicJob;
@@ -59,5 +68,5 @@ export async function GET(request: NextRequest) {
     });
     return { ...publicJob, score:match.score, matchReasons:match.reasons, profileReady:match.profileReady };
   });
-  return NextResponse.json({ jobs: personalizedJobs, total, page, pages: Math.ceil(total / limit) });
+  return NextResponse.json({ jobs: personalizedJobs, total, page, pages: Math.ceil(total / limit), stats });
 }

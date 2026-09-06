@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendSlackTest } from "@/lib/slack";
+import { hasValidBearerToken } from "@/lib/bearer-auth";
 
 export async function POST(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!hasValidBearerToken(request.headers.get("authorization"), secret)) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
   try {

@@ -33,10 +33,10 @@ export async function POST(request: Request) {
   if ((recent.rows[0]?.total as number) >= 10) return NextResponse.json({ error: "Limite de 10 générations par heure atteinte" }, { status: 429 });
   try {
     const hook = await generateApplicationHook({
-      apiKey: decryptSecret(row.api_key_ciphertext as string, row.api_key_iv as string),
+      apiKey: decryptSecret(row.api_key_ciphertext as string, row.api_key_iv as string, "gemini"),
       format: parsed.data.format,
       job: { title: row.title as string, company: row.company as string, location: row.location as string, contract: row.contract as string | null, description: row.description as string },
-      profile: { headline: (row.headline as string | null) ?? "", educationLevel: (row.education_level as string | null) ?? "", experienceYears: (row.experience_years as number | null) ?? 0, skills: (row.skills as string[] | null) ?? [], desiredRoles: (row.desired_roles as string[] | null) ?? [], cvText: row.cv_text_ciphertext?decryptSecret(row.cv_text_ciphertext as string,row.cv_text_iv as string):"" }
+      profile: { headline: (row.headline as string | null) ?? "", educationLevel: (row.education_level as string | null) ?? "", experienceYears: (row.experience_years as number | null) ?? 0, skills: (row.skills as string[] | null) ?? [], desiredRoles: (row.desired_roles as string[] | null) ?? [], cvText: row.cv_text_ciphertext?decryptSecret(row.cv_text_ciphertext as string,row.cv_text_iv as string,"cv"):"" }
     });
     await sql`INSERT INTO ai_generation_log (user_id,job_id,provider,model) VALUES (${row.user_id as string},${row.job_id as string},${row.provider as string},${row.model as string})`;
     return NextResponse.json({ ok: true, hook });

@@ -2,7 +2,18 @@ export type MatchJob = { title:string; description?:string; location:string; con
 export type MatchProfile = { desiredRoles?:string[]; skills?:string[]; cvSkills?:string[]; desiredLocations?:string[]; desiredContracts?:string[]; remotePreference?:string; minimumScore?:number };
 
 const normalize=(value:string)=>value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9+#.]+/g," ").trim();
-const tokens=(value:string)=>new Set(normalize(value).split(" ").filter(word=>word.length>1));
+function frenchStem(word:string){
+  if(word.length<4)return word;
+  if(word.endsWith("euses"))return `${word.slice(0,-5)}eur`;
+  if(word.endsWith("euse"))return `${word.slice(0,-4)}eur`;
+  if(word.endsWith("trices"))return `${word.slice(0,-6)}teur`;
+  if(word.endsWith("trice"))return `${word.slice(0,-5)}teur`;
+  if(word.endsWith("es")&&word.length>5)return word.slice(0,-2);
+  if((word.endsWith("s")||word.endsWith("x"))&&word.length>4)return word.slice(0,-1);
+  if(word.endsWith("e")&&word.length>5)return word.slice(0,-1);
+  return word;
+}
+const tokens=(value:string)=>new Set(normalize(value).split(" ").filter(word=>word.length>1).map(frenchStem));
 function overlap(needle:string,haystack:string){const phrase=normalize(needle);const normalized=normalize(haystack);if(!phrase)return 0;if(normalized.includes(phrase))return 1;const wanted=tokens(needle);const found=tokens(haystack);return wanted.size?[...wanted].filter(word=>found.has(word)).length/wanted.size:0}
 function list(value:unknown){return Array.isArray(value)?value.filter((item):item is string=>typeof item==="string"&&item.trim().length>0):[]}
 

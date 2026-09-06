@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { incomingJobSchema } from "@/lib/validation";
 import { upsertJob } from "@/lib/jobs";
+import { hasValidBearerToken } from "@/lib/bearer-auth";
 
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   const expectedKey = process.env.INGEST_API_KEY;
-  if (!expectedKey || request.headers.get("authorization") !== `Bearer ${expectedKey}`) {
+  if (!hasValidBearerToken(request.headers.get("authorization"), expectedKey)) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
