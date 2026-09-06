@@ -47,7 +47,14 @@ Description : ${job.description.slice(0, 9_000)}`;
   const response = await fetch(`${GEMINI_BASE_URL}/models/${GEMINI_MODEL}:generateContent`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.55, maxOutputTokens: 300 } }),
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.55,
+        maxOutputTokens: 1_000,
+        thinkingConfig: { thinkingLevel: "low" }
+      }
+    }),
     signal: AbortSignal.timeout(25_000)
   });
   const data = await response.json().catch(() => null) as any;
@@ -56,7 +63,9 @@ Description : ${job.description.slice(0, 9_000)}`;
     if ([400, 401, 403].includes(response.status)) throw new Error("Ta clé Gemini n’est plus autorisée.");
     throw new Error("Gemini n’a pas pu générer l’accroche.");
   }
-  const text = data?.candidates?.[0]?.content?.parts?.map((part: any) => part.text ?? "").join("").trim();
+  const candidate = data?.candidates?.[0];
+  if (candidate?.finishReason === "MAX_TOKENS") throw new Error("La réponse Gemini a été interrompue. Réessaie dans quelques secondes.");
+  const text = candidate?.content?.parts?.map((part: any) => part.text ?? "").join("").trim();
   if (!text) throw new Error("Gemini n’a renvoyé aucun texte.");
   return text;
 }
