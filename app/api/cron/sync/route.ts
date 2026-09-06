@@ -4,7 +4,7 @@ import { fetchLaBonneAlternanceJobs, isLaBonneAlternanceConfigured } from "@/lib
 import { atsConfigured, fetchAshbyJobs, fetchGreenhouseJobs, fetchLeverJobs, fetchSmartRecruitersJobs } from "@/lib/connectors/ats";
 import { upsertJob } from "@/lib/jobs";
 import { sql } from "@/lib/db";
-import { deliverSlackOutbox, deliverUserSlackOutbox, enqueueSlack, enqueueUserSlack, shouldNotify } from "@/lib/slack";
+import { deliverDeadlineReminders, deliverSlackOutbox, deliverUserSlackOutbox, enqueueDeadlineReminders, enqueueSlack, enqueueUserSlack, shouldNotify } from "@/lib/slack";
 
 export const maxDuration = 60;
 
@@ -56,11 +56,13 @@ export async function GET(request: NextRequest) {
   try {
     const selected = request.nextUrl.searchParams.get("source") || "france-travail";
     if (selected === "notifications") {
+      const remindersQueued = await enqueueDeadlineReminders();
       const slack = await deliverSlackOutbox();
       const userSlack = await deliverUserSlackOutbox();
+      const deadlineReminders = await deliverDeadlineReminders();
       return NextResponse.json({
         ok: true, source: selected, fetched: 0, inserted: 0, sources: [],
-        slack, userSlack, durationMs: Date.now() - startedAt
+        slack, userSlack, remindersQueued, deadlineReminders, durationMs: Date.now() - startedAt
       });
     }
     const connectors = {

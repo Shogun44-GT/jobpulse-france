@@ -14,6 +14,8 @@ type SlackJob = {
   publishedAt?: string;
   score?: number;
   matchReasons?: string[];
+  deadlineAt?: string;
+  deadlineReminder?: boolean;
 };
 
 export function slackConfigured() {
@@ -37,15 +39,16 @@ async function postSlack(job: SlackJob, webhook = process.env.SLACK_WEBHOOK_URL)
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      text: `Nouvelle offre : ${job.title} chez ${job.company}`,
+      text: job.deadlineReminder ? `Échéance proche : ${job.title} chez ${job.company}` : `Nouvelle offre : ${job.title} chez ${job.company}`,
       blocks: [
-        { type: "header", text: { type: "plain_text", text: `⚡ ${job.title}`.slice(0, 150), emoji: true } },
+        { type: "header", text: { type: "plain_text", text: `${job.deadlineReminder ? "⏰ Plus que 3 jours" : "⚡"} ${job.title}`.slice(0, 150), emoji: true } },
         { type: "section", fields: [
           { type: "mrkdwn", text: `*Entreprise*\n${job.company}` },
           { type: "mrkdwn", text: `*Localisation*\n${job.location}` },
           { type: "mrkdwn", text: `*Contrat*\n${flags || "Non précisé"}` },
           { type: "mrkdwn", text: `*Source*\n${job.source}` }
         ] },
+        ...(job.deadlineReminder && job.deadlineAt ? [{ type: "section", text: { type: "mrkdwn", text: `*Date limite :* ${new Date(job.deadlineAt).toLocaleDateString("fr-FR", { timeZone: "Europe/Paris" })}` } }] : []),
         ...(typeof job.score === "number" ? [{ type: "section", text: { type: "mrkdwn", text: `*Compatibilité : ${job.score}%*${job.matchReasons?.length ? `\n${job.matchReasons.join(" • ")}` : ""}` } }] : []),
         { type: "actions", elements: [{ type: "button", text: { type: "plain_text", text: "Postuler maintenant", emoji: true }, style: "primary", url: job.applyUrl }] },
         { type: "context", elements: [{ type: "mrkdwn", text: "Détectée par JobPulse France • Vérifie toujours les informations sur le site source." }] }
@@ -138,4 +141,55 @@ export async function deliverUserSlackOutbox() {
     }
   }
   return { sent, failed, pending: pending.rows.length };
+}
+
+export async function enqueueDeadlineReminders() {
+  const result = await sql`
+    INSERT INTO deadline_reminder_outbox (user_id, job_id)
+    SELECT sc.user_id, j.id
+    FROM slack_connections sc
+    JOIN candidate_profiles cp ON cp.user_id = sc.user_id
+    JOIN jobs j ON j.active = TRUE AND j.duplicate_of_job_id IS NULL
+    WHERE j.deadline_at > NOW()
+      AND j.deadline_at <= NOW() + INTERVAL '3 days'
+      AND (j.contract IS NULL OR j.contract = ANY(cp.desired_contracts))
+      AND NOT EXISTS (
+        SELECT 1 FROM deadline_reminder_outbox d
+        WHERE d.user_id = sc.user_id AND d.job_id = j.id
+      )
+    ON CONFLICT (user_id, job_id) DO NOTHING
+    RETURNING id
+  `;
+  return result.rows.length;
+}
+
+export async function deliverDeadlineReminders() {
+  const max = Math.min(20, Math.max(1, Number(process.env.SLACK_USER_MAX_MESSAGES_PER_RUN) || 20));
+  const pending = await sql`
+    SELECT d.id, sc.webhook_ciphertext, sc.webhook_iv, j.id AS "jobId", j.company,
+      j.title, j.location, j.contract, j.remote, j.apply_url AS "applyUrl",
+      j.deadline_at AS "deadlineAt", s.name AS source
+    FROM deadline_reminder_outbox d
+    JOIN slack_connections sc ON sc.user_id=d.user_id
+    JOIN jobs j ON j.id=d.job_id JOIN sources s ON s.id=j.source_id
+    WHERE d.status IN ('pending','failed') AND d.attempts < 3
+    ORDER BY j.deadline_at ASC LIMIT ${max}
+  `;
+  let sent=0; let failed=0;
+  for (const row of pending.rows) {
+    await sql`UPDATE deadline_reminder_outbox SET status='sending', attempts=attempts+1 WHERE id=${row.id}`;
+    try {
+      const webhook=decryptSecret(row.webhook_ciphertext as string,row.webhook_iv as string);
+      await postSlack({ id:row.jobId as string, company:row.company as string, title:row.title as string,
+        location:row.location as string, contract:row.contract as string|undefined, remote:row.remote as boolean,
+        applyUrl:row.applyUrl as string, source:row.source as string, deadlineAt:row.deadlineAt as string,
+        deadlineReminder:true }, webhook);
+      await sql`UPDATE deadline_reminder_outbox SET status='sent', delivered_at=NOW(), last_error=NULL WHERE id=${row.id}`;
+      sent+=1;
+    } catch(error) {
+      await sql`UPDATE deadline_reminder_outbox SET status='failed', last_error=${error instanceof Error?error.message.slice(0,500):"Erreur inconnue"} WHERE id=${row.id}`;
+      failed+=1;
+    }
+  }
+  return { sent, failed, pending:pending.rows.length };
 }
