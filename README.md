@@ -20,6 +20,7 @@ Les meilleures offres de stage, d'alternance et de premier emploi reçoivent rap
 - Score de compatibilité enrichi par le profil et le CV
 - Connexion Slack OAuth individuelle et alertes personnalisées
 - Rappels avant la date limite de candidature
+- Alerte Slack après trois échecs consécutifs d'une source
 - Suivi des candidatures avec statuts et notes
 - Génération d'accroche, de lettre et de message LinkedIn avec la clé Gemini personnelle de l'utilisateur
 
@@ -108,6 +109,7 @@ SLACK_CLIENT_ID=
 SLACK_CLIENT_SECRET=
 SLACK_WEBHOOK_URL=
 SLACK_CONTRACTS=stage,alternance,graduate
+SYNC_FAILURE_ALERT_THRESHOLD=3
 ```
 
 ### France Travail

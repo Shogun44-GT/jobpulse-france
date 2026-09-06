@@ -6,6 +6,7 @@ import { upsertJob } from "@/lib/jobs";
 import { sql } from "@/lib/db";
 import { deliverDeadlineReminders, deliverSlackOutbox, deliverUserSlackOutbox, enqueueDeadlineReminders, enqueueSlack, enqueueUserSlack, shouldNotify } from "@/lib/slack";
 import { hasValidBearerToken } from "@/lib/bearer-auth";
+import { alertAfterConsecutiveFailures } from "@/lib/monitoring";
 
 export const maxDuration = 60;
 
@@ -24,6 +25,13 @@ async function recordSync(result: SourceResult, startedAt: number) {
       VALUES (${result.source}, ${result.status}, ${result.fetched}, ${result.inserted},
         ${Date.now() - startedAt}, ${result.error ?? null})
     `;
+    if (result.status === "failed") {
+      try {
+        await alertAfterConsecutiveFailures(result.source, result.error);
+      } catch (error) {
+        console.error("Impossible d'envoyer l'alerte de surveillance", error);
+      }
+    }
   } catch (error) {
     console.error("Impossible d'enregistrer le diagnostic de synchronisation", error);
   }
