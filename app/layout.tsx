@@ -4,6 +4,7 @@ import "./phase2.css";
 import "./account.css";
 import "./auth-components.css";
 import "./profile/profile.css";
+import "./profile/cv.css";
 import "./applications/applications.css";
 import "./dashboard-actions.css";
 import "./ai-actions.css";

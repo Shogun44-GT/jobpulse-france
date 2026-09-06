@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { auth } from "@/auth";
 import { calculateMatch } from "@/lib/matching";
+import { decryptSecret } from "@/lib/secret-crypto";
+import { extractCvSkills } from "@/lib/cv";
 
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -31,11 +33,13 @@ export async function GET(request: NextRequest) {
     const email = session.user.email.toLowerCase();
     const profileResult = await sql`
       SELECT cp.desired_roles, cp.skills, cp.desired_locations, cp.desired_contracts,
-        cp.remote_preference, cp.minimum_score
-      FROM candidate_profiles cp JOIN users u ON u.id=cp.user_id
+        cp.remote_preference, cp.minimum_score,cv.text_ciphertext,cv.text_iv
+      FROM users u LEFT JOIN candidate_profiles cp ON cp.user_id=u.id
+      LEFT JOIN candidate_cvs cv ON cv.user_id=u.id
       WHERE LOWER(u.email)=${email} LIMIT 1
     `;
     profile = profileResult.rows[0] ?? null;
+    if(profile?.text_ciphertext){try{profile.cv_skills=extractCvSkills(decryptSecret(profile.text_ciphertext as string,profile.text_iv as string))}catch{profile.cv_skills=[]}}
   }
   const count = await sql`
     SELECT COUNT(*)::int AS total FROM jobs j WHERE j.active = TRUE AND j.duplicate_of_job_id IS NULL
@@ -49,7 +53,7 @@ export async function GET(request: NextRequest) {
     const { description, ...publicJob } = row;
     if (!profile) return publicJob;
     const match = calculateMatch({ title:row.title as string, description:description as string, location:row.location as string, contract:row.contract as string|null, remote:row.remote as boolean }, {
-      desiredRoles:profile.desired_roles as string[], skills:profile.skills as string[],
+      desiredRoles:profile.desired_roles as string[], skills:profile.skills as string[], cvSkills:profile.cv_skills as string[],
       desiredLocations:profile.desired_locations as string[], desiredContracts:profile.desired_contracts as string[],
       remotePreference:profile.remote_preference as string, minimumScore:profile.minimum_score as number
     });

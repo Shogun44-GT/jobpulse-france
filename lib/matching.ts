@@ -1,5 +1,5 @@
 export type MatchJob = { title:string; description?:string; location:string; contract?:string|null; remote:boolean };
-export type MatchProfile = { desiredRoles?:string[]; skills?:string[]; desiredLocations?:string[]; desiredContracts?:string[]; remotePreference?:string; minimumScore?:number };
+export type MatchProfile = { desiredRoles?:string[]; skills?:string[]; cvSkills?:string[]; desiredLocations?:string[]; desiredContracts?:string[]; remotePreference?:string; minimumScore?:number };
 
 const normalize=(value:string)=>value.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9+#.]+/g," ").trim();
 const tokens=(value:string)=>new Set(normalize(value).split(" ").filter(word=>word.length>1));
@@ -8,7 +8,7 @@ function list(value:unknown){return Array.isArray(value)?value.filter((item):ite
 
 export function calculateMatch(job:MatchJob,profile:MatchProfile){
   const corpus=`${job.title} ${job.description??""}`;
-  const roles=list(profile.desiredRoles);const skills=list(profile.skills);const locations=list(profile.desiredLocations);const contracts=list(profile.desiredContracts);
+  const roles=list(profile.desiredRoles);const skills=[...new Set([...list(profile.skills),...list(profile.cvSkills)])];const locations=list(profile.desiredLocations);const contracts=list(profile.desiredContracts);
   const roleScore=roles.length?Math.max(...roles.map(role=>overlap(role,job.title))):0;
   const matchedSkills=skills.filter(skill=>overlap(skill,corpus)>=1);
   const skillScore=skills.length?matchedSkills.length/skills.length:0;
@@ -19,7 +19,7 @@ export function calculateMatch(job:MatchJob,profile:MatchProfile){
   const score=Math.round(roleScore*35+skillScore*30+contractScore*15+locationScore*10+remoteScore*10);
   const reasons:string[]=[];
   if(roleScore>=.5)reasons.push("Métier recherché");
-  if(matchedSkills.length)reasons.push(`${matchedSkills.slice(0,3).join(", ")} correspondent`);
+  if(matchedSkills.length)reasons.push(`${matchedSkills.slice(0,3).join(", ")} correspondent${list(profile.cvSkills).some(skill=>matchedSkills.includes(skill))?" au CV":""}`);
   if(contractScore)reasons.push("Contrat souhaité");
   if(locationScore)reasons.push("Localisation compatible");
   if(remotePreference==="remote"&&job.remote)reasons.push("Télétravail compatible");
